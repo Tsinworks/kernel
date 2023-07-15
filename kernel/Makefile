@@ -51,6 +51,7 @@ obj-y += livepatch/
 obj-y += dma/
 obj-y += entry/
 obj-$(CONFIG_MODULES) += module/
+obj-$(CONFIG_HORIZON) += horizon/
 
 obj-$(CONFIG_KCMP) += kcmp.o
 obj-$(CONFIG_FREEZER) += freezer.o
@@ -58,6 +59,7 @@ obj-$(CONFIG_PROFILING) += profile.o
 obj-$(CONFIG_STACKTRACE) += stacktrace.o
 obj-y += time/
 obj-$(CONFIG_FUTEX) += futex/
+obj-$(CONFIG_HORIZON) += horizon_futex.o
 obj-$(CONFIG_GENERIC_ISA_DMA) += dma.o
 obj-$(CONFIG_SMP) += smp.o
 ifneq ($(CONFIG_SMP),y)

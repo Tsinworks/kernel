@@ -167,7 +167,11 @@ static int do_brk_munmap(struct ma_state *mas, struct vm_area_struct *vma,
 			 struct list_head *uf);
 static int do_brk_flags(struct ma_state *mas, struct vm_area_struct *brkvma,
 		unsigned long addr, unsigned long request, unsigned long flags);
+#ifdef CONFIG_HORIZON
+unsigned long do_brk(unsigned long brk)
+#else
 SYSCALL_DEFINE1(brk, unsigned long, brk)
+#endif
 {
 	unsigned long newbrk, oldbrk, origbrk;
 	struct mm_struct *mm = current->mm;
@@ -279,7 +283,12 @@ out:
 	mmap_write_unlock(mm);
 	return origbrk;
 }
-
+#ifdef CONFIG_HORIZON
+SYSCALL_DEFINE1(brk, unsigned long, brk)
+{
+	return do_brk(brk);
+}
+#endif
 #if defined(CONFIG_DEBUG_VM_MAPLE_TREE)
 extern void mt_validate(struct maple_tree *mt);
 extern void mt_dump(const struct maple_tree *mt);
