@@ -684,6 +684,16 @@ __SC_COMP(__NR_migrate_pages, sys_migrate_pages, compat_sys_migrate_pages)
 __SC_COMP(__NR_move_pages, sys_move_pages, compat_sys_move_pages)
 #endif
 
+#ifndef __NO_HORIZON
+#define __NR_horizon_execve 500
+__SYSCALL(__NR_horizon_execve, sys_horizon_execve)
+#define __NR_horizon_execveat 501
+__SYSCALL(__NR_horizon_execveat, sys_horizon_execveat)
+
+#define __NR_horizon_servctl 502
+__SYSCALL(__NR_horizon_servctl, sys_horizon_servctl)
+#endif
+
 #define __NR_rt_tgsigqueueinfo 240
 __SC_COMP(__NR_rt_tgsigqueueinfo, sys_rt_tgsigqueueinfo, \
 	  compat_sys_rt_tgsigqueueinfo)
@@ -863,7 +873,11 @@ __SYSCALL(__NR_process_madvise, sys_process_madvise)
 __SYSCALL(__NR_process_mrelease, sys_process_mrelease)
 
 #undef __NR_syscalls
+#ifndef __NO_HORIZON
+#define __NR_syscalls (__NR_horizon_servctl + 1)
+#else
 #define __NR_syscalls 449
+#endif
 
 /*
  * 32 bit systems traditionally used different

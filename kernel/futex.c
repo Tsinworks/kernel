@@ -3338,6 +3338,7 @@ out:
  * @head:	pointer to the list-head
  * @len:	length of the list-head, as userspace expects
  */
+#ifndef HORIZON_FUTEX
 SYSCALL_DEFINE2(set_robust_list, struct robust_list_head __user *, head,
 		size_t, len)
 {
@@ -3398,7 +3399,7 @@ err_unlock:
 
 	return ret;
 }
-
+#endif
 /* Constants for the pending_op argument of handle_futex_death */
 #define HANDLE_DEATH_PENDING	true
 #define HANDLE_DEATH_LIST	false
@@ -3766,7 +3767,7 @@ long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 	return -ENOSYS;
 }
 
-
+#ifndef HORIZON_FUTEX
 SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 		struct __kernel_timespec __user *, utime, u32 __user *, uaddr2,
 		u32, val3)
@@ -3803,7 +3804,7 @@ SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 
 	return do_futex(uaddr, op, val, tp, uaddr2, val2, val3);
 }
-
+#endif
 #ifdef CONFIG_COMPAT
 /*
  * Fetch a robust-list pointer. Bit 0 signals PI futexes:
@@ -3907,6 +3908,7 @@ static void compat_exit_robust_list(struct task_struct *curr)
 	}
 }
 
+#ifndef HORIZON_FUTEX
 COMPAT_SYSCALL_DEFINE2(set_robust_list,
 		struct compat_robust_list_head __user *, head,
 		compat_size_t, len)
@@ -3960,9 +3962,12 @@ err_unlock:
 
 	return ret;
 }
+#endif
+
 #endif /* CONFIG_COMPAT */
 
 #ifdef CONFIG_COMPAT_32BIT_TIME
+#ifndef HORIZON_FUTEX
 SYSCALL_DEFINE6(futex_time32, u32 __user *, uaddr, int, op, u32, val,
 		struct old_timespec32 __user *, utime, u32 __user *, uaddr2,
 		u32, val3)
@@ -3993,6 +3998,7 @@ SYSCALL_DEFINE6(futex_time32, u32 __user *, uaddr, int, op, u32, val,
 
 	return do_futex(uaddr, op, val, tp, uaddr2, val2, val3);
 }
+#endif
 #endif /* CONFIG_COMPAT_32BIT_TIME */
 
 static void __init futex_detect_cmpxchg(void)

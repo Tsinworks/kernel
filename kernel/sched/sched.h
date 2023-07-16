@@ -29,6 +29,7 @@
 #include <linux/sched/task.h>
 #include <linux/sched/task_stack.h>
 #include <linux/sched/topology.h>
+#include <linux/sched/horizon.h>
 #include <linux/sched/user.h>
 #include <linux/sched/wake_q.h>
 #include <linux/sched/xacct.h>
@@ -170,6 +171,13 @@ static inline int fair_policy(int policy)
 	return policy == SCHED_NORMAL || policy == SCHED_BATCH;
 }
 
+#ifdef CONFIG_HORIZON
+static inline int hzn_policy(int policy)
+{
+	return policy == SCHED_HORIZON;
+}
+#endif
+
 static inline int rt_policy(int policy)
 {
 	return policy == SCHED_FIFO || policy == SCHED_RR;
@@ -182,6 +190,9 @@ static inline int dl_policy(int policy)
 static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
+#ifdef CONFIG_HORIZON
+		hzn_policy(policy) ||
+#endif
 		rt_policy(policy) || dl_policy(policy);
 }
 
@@ -361,6 +372,9 @@ extern bool dl_cpu_busy(unsigned int cpu);
 
 struct cfs_rq;
 struct rt_rq;
+#ifdef CONFIG_HORIZON
+struct hzn_rq;
+#endif
 
 extern struct list_head task_groups;
 
@@ -729,6 +743,15 @@ struct dl_rq {
 	u64			bw_ratio;
 };
 
+#ifdef CONFIG_HORIZON
+struct hzn_rq {
+	unsigned int nr_running;
+	struct sched_hzn_entity *curr;
+	struct list_head queue[
+		HZN_LOWEST_THREAD_PRIORITY-HZN_HIGHEST_THREAD_PRIORITY+1];
+};
+#endif
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /* An entity is a task if it doesn't "own" a runqueue */
 #define entity_is_task(se)	(!se->my_q)
@@ -837,6 +860,10 @@ struct root_domain {
 	cpumask_var_t		rto_mask;
 	struct cpupri		cpupri;
 
+#ifdef CONFIG_HORIZON
+	cpumask_var_t		hzno_mask;
+	atomic_t			hzno_count;
+#endif
 	unsigned long		max_cpu_capacity;
 
 	/*
@@ -955,6 +982,9 @@ struct rq {
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
 	struct dl_rq		dl;
+#ifdef CONFIG_HORIZON
+	struct hzn_rq		hzn;
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
@@ -1908,6 +1938,9 @@ extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
+#ifdef CONFIG_HORIZON
+extern const struct sched_class hzn_sched_class;
+#endif
 
 static inline bool sched_stop_runnable(struct rq *rq)
 {
@@ -1918,6 +1951,13 @@ static inline bool sched_dl_runnable(struct rq *rq)
 {
 	return rq->dl.dl_nr_running > 0;
 }
+
+#ifdef CONFIG_HORIZON
+static inline bool sched_hzn_runnable(struct rq *rq)
+{
+	return rq->hzn.nr_running > 0;
+}
+#endif
 
 static inline bool sched_rt_runnable(struct rq *rq)
 {
@@ -1930,6 +1970,9 @@ static inline bool sched_fair_runnable(struct rq *rq)
 }
 
 extern struct task_struct *pick_next_task_fair(struct rq *rq, struct task_struct *prev, struct rq_flags *rf);
+#ifdef CONFIG_HORIZON
+extern struct task_struct *pick_next_task_horizon(struct rq *rq);
+#endif
 extern struct task_struct *pick_next_task_idle(struct rq *rq);
 
 #ifdef CONFIG_SMP

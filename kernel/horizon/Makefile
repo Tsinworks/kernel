@@ -1,0 +1,1 @@
+obj-$(CONFIG_HORIZON) += sys.o servctl.o handle_table.o

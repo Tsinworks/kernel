@@ -1075,6 +1075,15 @@ config CGROUP_DEVICE
 	  Provides a cgroup controller implementing whitelists for
 	  devices which a process in the cgroup can mknod or open.
 
+config HORIZON
+	bool "Horizon Linux kernel"
+	depends on ARM64
+	depends on FUTEX
+	depends on !TRANSPARENT_HUGEPAGE
+	select CHECKPOINT_RESTORE
+	select MEM_SOFT_DIRTY
+	default y
+
 config CGROUP_CPUACCT
 	bool "Simple CPU accounting controller"
 	help

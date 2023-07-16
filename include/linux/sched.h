@@ -37,6 +37,9 @@
 #include <linux/android_vendor.h>
 #include <linux/android_kabi.h>
 
+#include <linux/sched/horizon.h>
+#include <linux/horizon.h>
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -601,6 +604,25 @@ struct sched_dl_entity {
 #endif
 };
 
+#ifdef CONFIG_HORIZON
+struct sched_hzn_entity {
+	struct list_head list;
+	int priority;
+	enum hzn_yield_type yield_type;
+	struct rq *rq;
+	volatile long state;
+};
+
+/* Used in hzn_entity->state: */
+#define HZN_FIXED	0L
+#define HZN_SWITCHABLE	1L
+
+#define set_hzn_state(tsk, state_value)				\
+	smp_store_mb((tsk)->hzn.state, (state_value))
+#define set_current_hzn_state(state_value)			\
+	set_hzn_state(current, state_value)
+#endif
+
 #ifdef CONFIG_UCLAMP_TASK
 /* Number of utilization clamp buckets (shorter alias) */
 #define UCLAMP_BUCKETS CONFIG_UCLAMP_BUCKETS_COUNT
@@ -715,7 +737,9 @@ struct task_struct {
 	struct task_group		*sched_task_group;
 #endif
 	struct sched_dl_entity		dl;
-
+#ifdef CONFIG_HORIZON
+	struct sched_hzn_entity		hzn;
+#endif
 #ifdef CONFIG_UCLAMP_TASK
 	/*
 	 * Clamp values requested for a scheduling entity.
@@ -875,6 +899,29 @@ struct task_struct {
 	/* Recipient of SIGCHLD, wait4() reports: */
 	struct task_struct __rcu	*parent;
 
+#ifdef CONFIG_HORIZON
+	union {
+		/* used by horizon process */
+		struct {
+			u64					hzn_title_id;
+			u8					hzn_ideal_core;
+			u32					hzn_system_resource_size;
+			enum hzn_address_space_type	hzn_address_space_type;
+			atomic_t			hzn_request_state;
+			u32					hzn_thread_handle;
+		};
+
+		/* used by horizon service task */
+		struct {
+			unsigned long		hzn_cmd_addr;
+			struct hzn_session_request	*hzn_session_request;
+
+			spinlock_t			hzn_requests_lock;
+			struct list_head	hzn_requests;
+			bool				hzn_requests_stop;
+		};
+	};
+#endif
 	/*
 	 * Children/sibling form the list of natural children:
 	 */
@@ -1758,6 +1805,9 @@ static __always_inline bool is_idle_task(const struct task_struct *p)
 extern struct task_struct *curr_task(int cpu);
 extern void ia64_set_curr_task(int cpu, struct task_struct *p);
 
+#ifdef CONFIG_HORIZON
+void __yield(enum hzn_yield_type type);
+#endif
 void yield(void);
 
 union thread_union {

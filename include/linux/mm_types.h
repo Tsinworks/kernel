@@ -520,7 +520,9 @@ struct mm_struct {
 		unsigned long start_code, end_code, start_data, end_data;
 		unsigned long start_brk, brk, start_stack;
 		unsigned long arg_start, arg_end, env_start, env_end;
-
+#ifdef CONFIG_HORIZON
+		unsigned long hzn_alias_start, hzn_alias_code_start;
+#endif
 		unsigned long saved_auxv[AT_VECTOR_SIZE]; /* for /proc/PID/auxv */
 
 		/*

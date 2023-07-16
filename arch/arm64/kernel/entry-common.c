@@ -351,10 +351,18 @@ static void noinstr el0_dbg(struct pt_regs *regs, unsigned long esr)
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
 }
 
+#ifdef CONFIG_HORIZON
+static void noinstr el0_svc(struct pt_regs *regs, unsigned long esr)
+#else
 static void noinstr el0_svc(struct pt_regs *regs)
+#endif
 {
 	enter_from_user_mode();
+#ifdef CONFIG_HORIZON
+	do_el0_svc(esr, regs);
+#else
 	do_el0_svc(regs);
+#endif
 }
 
 static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
@@ -370,7 +378,11 @@ asmlinkage void noinstr el0_sync_handler(struct pt_regs *regs)
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC64:
+#ifdef CONFIG_HORIZON
+		el0_svc(regs, esr);
+#else
 		el0_svc(regs);
+#endif
 		break;
 	case ESR_ELx_EC_DABT_LOW:
 		el0_da(regs, esr);
@@ -425,10 +437,18 @@ static void noinstr el0_cp15(struct pt_regs *regs, unsigned long esr)
 	do_cp15instr(esr, regs);
 }
 
+#ifdef CONFIG_HORIZON
+static void noinstr el0_svc_compat(struct pt_regs *regs, unsigned long esr)
+#else
 static void noinstr el0_svc_compat(struct pt_regs *regs)
+#endif
 {
 	enter_from_user_mode();
+#ifdef CONFIG_HORIZON
+	do_el0_svc_compat(esr, regs);
+#else
 	do_el0_svc_compat(regs);
+#endif
 }
 
 asmlinkage void noinstr el0_sync_compat_handler(struct pt_regs *regs)
@@ -437,7 +457,11 @@ asmlinkage void noinstr el0_sync_compat_handler(struct pt_regs *regs)
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC32:
+#ifdef CONFIG_HORIZON
+		el0_svc_compat(regs, esr);
+#else
 		el0_svc_compat(regs);
+#endif
 		break;
 	case ESR_ELx_EC_DABT_LOW:
 		el0_da(regs, esr);

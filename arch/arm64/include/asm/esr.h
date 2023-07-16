@@ -160,7 +160,6 @@
 #define ESR_ELx_SYS64_ISS_DIR_MASK	0x1
 #define ESR_ELx_SYS64_ISS_DIR_READ	0x1
 #define ESR_ELx_SYS64_ISS_DIR_WRITE	0x0
-
 #define ESR_ELx_SYS64_ISS_RT_SHIFT	5
 #define ESR_ELx_SYS64_ISS_RT_MASK	(UL(0x1f) << ESR_ELx_SYS64_ISS_RT_SHIFT)
 #define ESR_ELx_SYS64_ISS_CRM_SHIFT	1
@@ -189,6 +188,10 @@
 					 ESR_ELx_SYS64_ISS_DIR_MASK)
 #define ESR_ELx_SYS64_ISS_RT(esr) \
 	(((esr) & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT)
+
+#define ESR_ELx_SYS64_ISS_SYS_CNTPCT	(ESR_ELx_SYS64_ISS_SYS_VAL(3, 3, 1, 14, 0) | \
+					 ESR_ELx_SYS64_ISS_DIR_READ)
+
 /*
  * User space cache operations have the following sysreg encoding
  * in System instructions.
