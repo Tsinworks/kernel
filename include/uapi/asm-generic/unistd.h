@@ -862,8 +862,23 @@ __SYSCALL(__NR_process_madvise, sys_process_madvise)
 #define __NR_process_mrelease 448
 __SYSCALL(__NR_process_mrelease, sys_process_mrelease)
 
+#ifndef __NO_HORIZON
+#define __NR_horizon_execve 500
+__SYSCALL(__NR_horizon_execve, sys_horizon_execve)
+#define __NR_horizon_execveat 501
+__SYSCALL(__NR_horizon_execveat, sys_horizon_execveat)
+
+#define __NR_horizon_servctl 502
+__SYSCALL(__NR_horizon_servctl, sys_horizon_servctl)
+#endif
+
 #undef __NR_syscalls
+
+#ifndef __NO_HORIZON
+#define __NR_syscalls (__NR_horizon_servctl + 1)
+#else
 #define __NR_syscalls 449
+#endif
 
 /*
  * 32 bit systems traditionally used different
