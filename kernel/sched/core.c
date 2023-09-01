@@ -3338,6 +3338,14 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->rt.on_rq		= 0;
 	p->rt.on_list		= 0;
 
+#ifdef CONFIG_HORIZON
+	INIT_LIST_HEAD(&p->hzn.list);
+	p->hzn.priority		= 0;
+	p->hzn.yield_type	= HZN_YIELD_NONE;
+	p->hzn.rq		= NULL;
+	p->hzn.state		= HZN_FIXED;
+#endif
+
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
 #endif
@@ -3507,6 +3515,11 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		p->sched_reset_on_fork = 0;
 	}
 
+#ifdef CONFIG_HORIZON
+	if (hzn_policy(p->policy))
+		p->sched_class = &hzn_sched_class;
+	else
+#endif
 	if (dl_prio(p->prio))
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
@@ -4615,11 +4628,21 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 	 * opportunity to pull in more work from other CPUs.
 	 */
 	if (likely(prev->sched_class <= &fair_sched_class &&
+#ifdef CONFIG_HORIZON
 		   rq->nr_running == rq->cfs.h_nr_running)) {
+#else
+		   rq->nr_running == rq->cfs.h_nr_running + rq->hzn.nr_running)) {
+#endif
 
 		p = pick_next_task_fair(rq, prev, rf);
 		if (unlikely(p == RETRY_TASK))
 			goto restart;
+
+#ifdef CONFIG_HORIZON
+		/* Assumes fair_sched_class->next == hzn_sched_class */
+		if (!p)
+			p = pick_next_task_horizon(rq);
+#endif
 
 		/* Assumes fair_sched_class->next == idle_sched_class */
 		if (!p) {
@@ -5080,6 +5103,11 @@ EXPORT_SYMBOL(default_wake_function);
 
 static void __setscheduler_prio(struct task_struct *p, int prio)
 {
+#ifdef CONFIG_HORIZON
+	if (hzn_policy(p->policy))
+		p->sched_class = &hzn_sched_class;
+	else
+#endif
 	if (dl_prio(prio))
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(prio))
@@ -5197,6 +5225,11 @@ void rt_mutex_setprio(struct task_struct *p, struct task_struct *pi_task)
 	 *      --> -dl task blocks on mutex A and could preempt the
 	 *          running task
 	 */
+#ifdef CONFIG_HORIZON
+	if (hzn_policy(p->policy)) // horizon tasks just stay horizon
+		;
+	else
+#endif
 	if (dl_prio(prio)) {
 		if (!dl_prio(p->normal_prio) ||
 		    (pi_task && dl_prio(pi_task->prio) &&
@@ -6369,7 +6402,11 @@ SYSCALL_DEFINE3(sched_getaffinity, pid_t, pid, unsigned int, len,
  *
  * Return: 0.
  */
+#ifdef CONFIG_HORIZON
+static void do_sched_yield(enum hzn_yield_type type)
+#else
 static void do_sched_yield(void)
+#endif
 {
 	struct rq_flags rf;
 	struct rq *rq;
@@ -6377,7 +6414,12 @@ static void do_sched_yield(void)
 	rq = this_rq_lock_irq(&rf);
 
 	schedstat_inc(rq->yld_count);
-	current->sched_class->yield_task(rq);
+#ifdef CONFIG_HORIZON
+	((void (*)(struct rq *, enum hzn_yield_type))
+	 current->sched_class->yield_task)(rq, type);
+#else
+ 	current->sched_class->yield_task(rq);
+#endif
 
 	trace_android_rvh_do_sched_yield(rq);
 
@@ -6390,7 +6432,11 @@ static void do_sched_yield(void)
 
 SYSCALL_DEFINE0(sched_yield)
 {
+#ifdef CONFIG_HORIZON
+	do_sched_yield(0); // meaningless param
+#else
 	do_sched_yield();
+#endif
 	return 0;
 }
 
@@ -6457,10 +6503,23 @@ EXPORT_SYMBOL(__cond_resched_lock);
  * If you want to use yield() to be 'nice' for others, use cond_resched().
  * If you still want to use yield(), do not!
  */
+#ifdef CONFIG_HORIZON
+void __sched __yield(enum hzn_yield_type type);
+void __sched yield()
+{
+	return __yield(0); // meaningless param
+}
+void __sched __yield(enum hzn_yield_type type)
+#else
 void __sched yield(void)
+#endif
 {
 	set_current_state(TASK_RUNNING);
+#ifdef CONFIG_HORIZON
+	do_sched_yield(type);
+#else
 	do_sched_yield();
+#endif
 }
 EXPORT_SYMBOL(yield);
 
@@ -7473,7 +7532,12 @@ void __init sched_init(void)
 	int i;
 
 	/* Make sure the linker didn't screw up */
+#ifdef CONFIG_HORIZON
+	BUG_ON(&idle_sched_class + 1 != &hzn_sched_class ||
+	       &hzn_sched_class + 1  != &fair_sched_class ||
+#else
 	BUG_ON(&idle_sched_class + 1 != &fair_sched_class ||
+#endif
 	       &fair_sched_class + 1 != &rt_sched_class ||
 	       &rt_sched_class + 1   != &dl_sched_class);
 #ifdef CONFIG_SMP
@@ -7551,6 +7615,9 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
+#ifdef CONFIG_HORIZON
+		init_hzn_rq(&rq->hzn);
+#endif
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
 		rq->tmp_alone_branch = &rq->leaf_cfs_rq_list;
